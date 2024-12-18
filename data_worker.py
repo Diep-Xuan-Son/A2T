@@ -243,7 +243,8 @@ class DataWorker(threading.Thread):
 
 	def run(self,):
 		# if __name__ == "__main__":
-		# 	system_signal.signal(system_signal.SIGINT, system_signal.SIG_IGN) # to ignore ctrl+c
+			# system_signal.signal(system_signal.SIGINT, system_signal.SIG_IGN) # to ignore ctrl+c
+			# system_signal.signal(system_signal.SIGINT, system_signal.SIGQUIT) # to exit ctrl+c
 
 		if not self.setup_audio():
 			raise Exception("Failed to set up audio recording.")

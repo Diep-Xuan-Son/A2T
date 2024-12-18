@@ -57,7 +57,9 @@ class OWWWorker():
 					model_paths = openwakeword_model_paths.split(',')
 					self.owwModel = OWWModel(
 						wakeword_models=model_paths,
-						inference_framework=openwakeword_inference_framework
+						inference_framework=openwakeword_inference_framework,
+						melspec_model_path="./weights/melspectrogram.onnx",
+						embedding_model_path="./weights/embedding_model.onnx",
 					)
 					logging.info(
 						f"Successfully loaded wakeword model(s): {openwakeword_model_paths}"
@@ -172,7 +174,7 @@ if __name__ == '__main__':
 		try:
 			data = dtw.audio_queue.get(timeout=0.1)
 			data_copy = data[:]
-			wakeword_index = self._process_wakeword(data_copy)
+			wakeword_index = owww._process_wakeword(data_copy)
 			print(f"----Check WW: {wakeword_index}")
 		except queue.Empty:
 			continue

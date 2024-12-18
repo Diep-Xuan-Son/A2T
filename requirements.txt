@@ -1,0 +1,4 @@
+pvporcupine
+tqdm
+requests
+pyaudio
