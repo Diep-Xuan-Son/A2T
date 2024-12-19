@@ -2,3 +2,8 @@ pvporcupine
 tqdm
 requests
 pyaudio
+scipy
+scikit-learn
+
+# for trainning
+tflite_runtime

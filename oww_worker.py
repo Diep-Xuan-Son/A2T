@@ -12,10 +12,11 @@ import pvporcupine
 import onnxruntime as ort
 import numpy as np
 from openwakeword.model import OWWModel
+from openwakeword.custom_verifier_model import train_custom_verifier
 
 class OWWWorker():
 	def __init__(self, 
-				wake_words: str="",
+				wake_words: str="alexa",
 				wake_words_sensitivity: float=0.6,
 				wakeword_backend: str="openwakeword",
 				openwakeword_inference_framework: str="onnx",
@@ -60,6 +61,8 @@ class OWWWorker():
 						inference_framework=openwakeword_inference_framework,
 						melspec_model_path="./weights/melspectrogram.onnx",
 						embedding_model_path="./weights/embedding_model.onnx",
+						# custom_verifier_models={"alexa_v0.1": "./weights/alexa.pkl"},
+            			# custom_verifier_threshold=0.3,
 					)
 					logging.info(
 						f"Successfully loaded wakeword model(s): {openwakeword_model_paths}"
@@ -163,7 +166,7 @@ if __name__ == '__main__':
 	wake_words_sensitivity = INIT_WAKE_WORDS_SENSITIVITY
 	wakeword_backend = "openwakeword"
 	openwakeword_inference_framework = "onnx"
-	openwakeword_model_paths ="./weights/alexa_v0.1.onnx"
+	openwakeword_model_paths ="./weights/chào_mer_quea.onnx"
 	owww = OWWWorker(wake_words,
 					wake_words_sensitivity,
 					wakeword_backend,
@@ -178,3 +181,15 @@ if __name__ == '__main__':
 			print(f"----Check WW: {wakeword_index}")
 		except queue.Empty:
 			continue
+
+	# #---------train----------
+	# train_custom_verifier(
+	# 	positive_reference_clips = ["./data_test/p_alexa1.wav", "./data_test/p_alexa2.wav", "./data_test/p_alexa3.wav"],
+	# 	negative_reference_clips = ["./data_test/n_record1.wav", "./data_test/n_record2.wav"],
+	# 	output_path = "./weights/alexa.pkl",
+	# 	model_name = "./weights/alexa_v0.1.onnx", # the target model path which matches the wake word/phrase of the collected positive examples
+	# 	inference_framework = "onnx",
+	# 	melspec_model_path="./weights/melspectrogram.onnx",
+	# 	embedding_model_path="./weights/embedding_model.onnx",
+	# )
+	# #/////////////////////////

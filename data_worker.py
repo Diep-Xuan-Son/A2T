@@ -155,6 +155,7 @@ class DataWorker(threading.Thread):
 				if not validate_device(self.input_device_index):
 					raise Exception("Selected device validation failed")
 
+				# print(f"----sample_rate: {sample_rate}")
 				# If we get here, we have a validated device
 				stream = audio_interface.open(
 					format=pyaudio.paInt16,
@@ -344,6 +345,37 @@ class DataWorker(threading.Thread):
 			if self.audio_interface:
 				self.audio_interface.terminate()
 
+	def record(self, record_seconds=5, filename="record.wav"):
+		from array import array
+		import wave
+
+		if not self.setup_audio():
+			raise Exception("Failed to set up audio recording.")
+
+		#starting recording
+		frames=[]
+		for i in range(0, int(self.target_sample_rate/self.chunk_size*record_seconds)):
+			data = self.stream.read(self.chunk_size, exception_on_overflow=False)
+			data_chunk=array('h',data)
+			vol=max(data_chunk)
+			if(vol>=500):
+				print("something said")
+				frames.append(data)
+			else:
+				print("nothing")
+
+		#end of recording
+		self.stream.stop_stream()
+		self.stream.close()
+		self.audio_interface.terminate()
+		#writing to file
+		wavfile=wave.open(filename,'wb')
+		wavfile.setnchannels(1)
+		wavfile.setsampwidth(self.audio_interface.get_sample_size(pyaudio.paInt16))
+		wavfile.setframerate(self.target_sample_rate)
+		wavfile.writeframes(b''.join(frames))#append frames recorded to file
+		wavfile.close()
+
 
 SAMPLE_RATE = 16000
 BUFFER_SIZE = 512
@@ -366,6 +398,10 @@ if __name__ == '__main__':
 					shutdown_event,
 					interrupt_stop_event,
 					use_microphone)
-	# dtw.daemon = True
+	dtw.daemon = True
 	dtw.start()
 
+	# #record to file
+	# record_seconds=5
+	# filename="p_record3.wav"
+	# dtw.record(record_seconds, filename)

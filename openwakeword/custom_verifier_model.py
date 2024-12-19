@@ -140,13 +140,13 @@ def train_custom_verifier(
     """
     # Load target openWakeWord model
     if os.path.exists(model_name):
-        oww = openwakeword.Model(
+        oww = openwakeword.OWWModel(
             wakeword_models=[model_name],
             **kwargs
         )
         model_name = os.path.splitext(model_name)[0].split(os.path.sep)[-1]
     else:
-        oww = openwakeword.Model(**kwargs)
+        oww = openwakeword.OWWModel(**kwargs)
 
     # Get features from positive reference clips
     positive_features = np.vstack(
