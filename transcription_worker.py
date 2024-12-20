@@ -15,7 +15,7 @@ import multiprocessing as mp
 import signal as system_signal
 import torch
 
-class TranscriptionWorker:
+class TranscriptionWorker(threading.Thread):
 	def __init__(self, 
 				conn=None, 
 				stdout_pipe=None, 
@@ -30,6 +30,7 @@ class TranscriptionWorker:
 				initial_prompt: Optional[Union[str, Iterable[int]]] = None,
 				suppress_tokens: Optional[List[int]] = [-1],
 				):
+		threading.Thread.__init__(self)
 		self.conn = conn
 		self.stdout_pipe = stdout_pipe
 		self.model_path = model_path
@@ -59,7 +60,7 @@ class TranscriptionWorker:
 			if self.conn.poll(0.01):    #This will return a boolean as to whether there is data to be received and read from the pipe
 				try:
 					data = self.conn.recv()
-					print(f"----data: {data}")
+					# print(f"----data: {data}")
 					self.queue.put(data)
 				except Exception as e:
 					logging.error(f"Error receiving data from connection: {e}")
@@ -67,9 +68,9 @@ class TranscriptionWorker:
 				time.sleep(self.time_sleep)
 
 	def run(self):
-		# if __name__ == "__main__":
-		# 	 system_signal.signal(system_signal.SIGINT, system_signal.SIG_IGN)
-		# 	 __builtins__.print = self.custom_print
+		if __name__ == "__main__":
+			 # system_signal.signal(system_signal.SIGINT, system_signal.SIG_IGN)
+			 __builtins__.print = self.custom_print
 
 		logging.info(f"Initializing faster_whisper main transcription model {self.model_path}")
 		try:
@@ -104,7 +105,7 @@ class TranscriptionWorker:
 						)
 						transcription = " ".join(seg.text for seg in segments).strip()
 						logging.debug(f"Final text detected with main model: {transcription}")
-						print(f"----segments: {transcription}")
+						# print(f"----segments: {transcription}")
 						self.conn.send(('success', (transcription, info)))
 					except Exception as e:
 						logging.error(f"General error in transcription: {e}")
@@ -124,13 +125,17 @@ class TranscriptionWorker:
 			self.shutdown_event.set()  # Ensure the polling thread will stop
 			polling_thread.join()  # Wait for the polling thread to finish
 
+def _transcription_worker(*args, **kwargs):
+	worker = TranscriptionWorker(*args, **kwargs)
+	worker.run()
+
 SAMPLE_RATE = 16000
 BUFFER_SIZE = 512
 INT16_MAX_ABS_VALUE = 32768.0
 if __name__=="__main__":
 	parent_transcription_pipe, child_transcription_pipe = mp.Pipe()
 	parent_stdout_pipe, child_stdout_pipe = mp.Pipe()
-	model = "./weights/faster-whisper-small"
+	model = "./weights/faster-whisper-tiny"
 	compute_type = "default"
 	gpu_device_index = 0
 	device = "cuda"
@@ -141,7 +146,7 @@ if __name__=="__main__":
 	initial_prompt = None
 	suppress_tokens = [-1]
 
-	worker = TranscriptionWorker(child_transcription_pipe,
+	tsw = TranscriptionWorker(child_transcription_pipe,
 								child_stdout_pipe,
 								model,
 								compute_type,
@@ -153,12 +158,28 @@ if __name__=="__main__":
 								beam_size,
 								initial_prompt,
 								suppress_tokens)
-	thread = threading.Thread(target=worker.run, args=())
-	thread.daemon = True
-	thread.start()
-	# worker.run()
-	# __builtins__.print = worker.custom_print
-	# main_transcription_ready_event.wait()
+	tsw.daemon = True
+	tsw.start()
+	# thread = threading.Thread(target=tsw.run, args=())
+	# thread = threading.Thread(target=_transcription_worker, args=(
+	# 		child_transcription_pipe,
+	# 		child_stdout_pipe,
+	# 		model,
+	# 		compute_type,
+	# 		gpu_device_index,
+	# 		device,
+	# 		main_transcription_ready_event,
+	# 		shutdown_event,
+	# 		interrupt_stop_event,
+	# 		beam_size,
+	# 		initial_prompt,
+	# 		suppress_tokens
+	# 	))
+
+	# thread.daemon = True
+	# thread.start()
+	# __builtins__.print = tsw.custom_print
+	main_transcription_ready_event.wait()
 	#-----------get data----------
 	from data_worker import DataWorker, mp, c_bool
 	import queue
@@ -198,9 +219,10 @@ if __name__=="__main__":
 				audio_array = np.frombuffer(b''.join(frames), dtype=np.int16)
 				audio = audio_array.astype(np.float32) / INT16_MAX_ABS_VALUE
 				parent_transcription_pipe.send((audio, language))
-				# if parent_transcription_pipe.poll(timeout=5):  # Wait for 5 seconds
-				status, result = parent_transcription_pipe.recv()
-				print(f"----status: {status}")
-				print(f"----result: {result}")
+				if parent_transcription_pipe.poll(timeout=10):  # Wait for 5 seconds
+					status, result = parent_transcription_pipe.recv()
+					print(f"----status: {status}")
+					print(f"----result: {result}")
+				frames.clear()
 		except queue.Empty:
 			continue

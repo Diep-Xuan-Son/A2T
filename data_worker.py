@@ -253,9 +253,8 @@ class DataWorker(threading.Thread):
 		try:
 			while not self.shutdown_event.is_set():
 				try:
-					data = self.stream.read(self.chunk_size, exception_on_overflow=False)
-					
 					if self.use_microphone.value:
+						data = self.stream.read(self.chunk_size, exception_on_overflow=False)
 						processed_data = self.preprocess_audio(data, self.device_sample_rate, self.target_sample_rate)
 						self.buffer += processed_data
 
@@ -275,7 +274,8 @@ class DataWorker(threading.Thread):
 								self.time_since_last_buffer_message = time.time()
 
 							self.audio_queue.put(to_process)
-							
+					else:
+						raise Exception("Not using microphone argument")
 
 				except OSError as e:
 					if e.errno == pyaudio.paInputOverflowed:
